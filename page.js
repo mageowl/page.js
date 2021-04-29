@@ -11,6 +11,7 @@ function asElement(el) {
 export class Component {
 	state = {};
 	args = null;
+	dataType = "child";
 	/** @type {HTMLElement} */
 	#element = null;
 
@@ -42,56 +43,74 @@ export class Component {
 	}
 }
 
-class PageElement extends Function {
-	_attrs = {};
-	_eventListeners = [];
-	#tagName = null;
-
-	attrData = { id: "string", style: "object", class: "string" };
-
-	constructor(tagName, attrs = {}) {
+class DotFunction extends Function {
+	constructor(onCall) {
 		super();
 
-		// Create Proxy
 		const proxy = new Proxy(this, {
-			apply: function (target, _that, children) {
-				return target._render(children);
+			apply: function (target, _that, args) {
+				return onCall(target, ...args);
 			}
 		});
 
-		// Add attr methods and tagName
-		Object.entries({ ...this.attrData, ...attrs }).forEach(([attr, type]) => {
-			this[attr] = function (value) {
-				if (typeof value !== type)
-					throw new TypeError(`Expected a ${type}, but got a ${typeof value}.`);
-				if (attr === "id") console.log(this._attrs.id);
-				this._attrs[attr] = value;
-				return proxy;
-			}.bind(this);
-		});
-
-		this.#tagName = tagName;
-
 		return proxy;
 	}
+}
 
-	_render(children) {
+class PageElement extends DotFunction {
+	tagName = null;
+	dataType = "child";
+
+	constructor(tagName) {
+		super(function (target, ...data) {
+			return target._render(data);
+		});
+
+		this.tagName = tagName;
+	}
+
+	/**
+	 * @typedef Data
+	 * @property {string} dataType Type of data.
+	 */
+
+	/**
+	 * Render PageElement
+	 *
+	 * @param {Data[]} data Data to render.
+	 * @return {HTMLElement} Rendered Element
+	 * @memberof PageElement
+	 */
+	_render(data) {
+		const children = data.filter(
+			(data) =>
+				data instanceof HTMLElement ||
+				data instanceof Component ||
+				typeof data === "string"
+		);
+		const attrs = Object.fromEntries(
+			data
+				.filter(({ dataType }) => dataType === "attr")
+				.map(({ str }) => str.split("="))
+		);
+		const events = data.filter(({ dataType }) => dataType === "event");
+		const style =
+			data.find(({ dataType }) => dataType === "styleAttr")?.style ?? {};
+
 		/** @type {HTMLElement} */
-		const el = document.createElement(this.#tagName);
+		const el = document.createElement(this.tagName);
 
-		Object.entries(this._attrs.style ?? {}).forEach(([property, value]) =>
+		Object.entries(style).forEach(([property, value]) =>
 			el.style.setProperty(
 				property.replaceAll(/([A-Z])/g, (_m, l) => `-${l.toLowerCase()}`),
 				value
 			)
 		);
-		Object.entries(this._attrs)
+		Object.entries(attrs)
 			.filter(([key]) => key !== "style")
 			.forEach((kvPair) => el.setAttribute(...kvPair));
 
-		// console.log(el.id, this._attrs.id);
-
-		this._eventListeners.forEach(({ event, callback }) =>
+		events.forEach(({ event, callback }) =>
 			el.addEventListener(event, callback)
 		);
 
@@ -102,35 +121,30 @@ class PageElement extends Function {
 
 		return el;
 	}
-
-	on(event, callback) {
-		this._eventListeners.push({ event, callback });
-		return this;
-	}
-
-	getTagName = () => {
-		return this.#tagName;
-	};
 }
 
-export const el = {};
-function createTag(tagName, attrs = null) {
-	Object.defineProperty(el, tagName, {
-		get() {
-			return new PageElement(tagName, attrs);
-		}
-	});
-}
+export const el = {
+	div: new PageElement("div"),
+	h1: new PageElement("h1"),
+	p: new PageElement("p"),
+	button: new PageElement("button"),
+	img: new PageElement("img", "src"),
+	br: new PageElement("br"),
+	span: new PageElement("span"),
+	link: new PageElement("link", "rel", "href"),
+	code: new PageElement("code"),
+	attr: new DotFunction(function (_t, str) {
+		return { dataType: "attr", str };
+	})
+};
 
-createTag("div");
-createTag("h1");
-createTag("p");
-createTag("button");
-createTag("img", { src: "string" });
-createTag("br");
-createTag("span");
-createTag("link", { rel: "string", href: "string" });
-createTag("code");
+el.attr.on = function (event, callback) {
+	return { dataType: "event", event, callback };
+};
+
+el.attr.style = function (style) {
+	return { dataType: "styleAttr", style };
+};
 
 export function renderPage(component, target) {
 	const el = document.querySelector(target);

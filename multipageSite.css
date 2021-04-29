@@ -2,34 +2,34 @@ body {
 	margin: 0;
 }
 
-#page {
+div#page {
 	min-height: 100vh;
 	position: relative;
 }
 
-#header {
+div#header {
 	background-color: lightgray;
 	padding: 10px;
 }
 
-#header .title {
+div#header h1.title {
 	cursor: pointer;
 	display: inline;
 	margin-right: 20px;
 }
 
-#header .link {
+div#header span.link {
 	cursor: pointer;
 	text-decoration: underline;
 	margin-right: 10px;
 }
 
-#content {
+div#content {
 	padding: 8px;
 	padding-bottom: 350px;
 }
 
-.image-wheel {
+div.image-wheel {
 	display: flex;
 	height: 325px;
 	width: 1000px;
@@ -41,7 +41,7 @@ body {
 	overflow-x: scroll;
 }
 
-.image-wheel img {
+div.image-wheel img {
 	display: inline;
 	width: 300px;
 	min-width: 300px;
@@ -52,11 +52,11 @@ body {
 	transition: transform 300ms;
 }
 
-.image-wheel.move img {
+div.image-wheel.move img {
 	transform: translateX(-350px);
 }
 
-#footer {
+div#footer {
 	background-color: lightgray;
 	display: flex;
 	width: 100%;
@@ -65,7 +65,7 @@ body {
 	bottom: 0;
 }
 
-#footer span {
+div#footer span {
 	margin: auto;
 	color: gray;
 }
